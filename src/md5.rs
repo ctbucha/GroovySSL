@@ -1,4 +1,5 @@
 use std::cmp;
+use std::fmt::Write;
 
 const A0: u32 = 0x67452301;
 const B0: u32 = 0xefcdab89;
@@ -45,25 +46,37 @@ fn md5_round(message: [u32; 16], a0: u32, b0: u32, c0: u32, d0: u32) -> (u32, u3
 
 pub fn md5(message: &[u8]) -> [u8; 16] {
     let message_length = message.len();
-    // 1 byte end + 2 byte length
-    let chunks_count = ((message_length + 3) / 64) + 1;
-
+    // 1 byte end + 8 byte length
+    let chunks_count = ((message_length + 1 + 8) / 64) + 1;
     let (mut a, mut b, mut c, mut d) = (A0, B0, C0, D0);
 
     for chunk_index in 0..chunks_count {
         let mut message_chunk: [u8; 64] = [0; 64];
         let message_start_index = chunk_index * 64;
-        let chunk_content_length = cmp::min(message_length - message_start_index, 64);
-        for i in 0..chunk_content_length {
-            message_chunk[i] = message[message_start_index + i];
-        }
-        if (chunk_content_length < 64) {
-            message_chunk[chunk_content_length] = 0x80;
-        }
-        if (chunk_content_length + 1 + 8 < 64) {
-            let bit_length = message_length << 3;
-            for i in 0..7 {
-                message_chunk[56 + i] = ((bit_length >> i * 8) & 0xFF).try_into().unwrap();
+        match if message_start_index <= message_length {
+            Some(cmp::min(message_length - message_start_index, 64))
+        } else {
+            None
+        } {
+            Some(chunk_content_length) => {
+                for i in 0..chunk_content_length {
+                    message_chunk[i] = message[message_start_index + i];
+                }
+                if chunk_content_length < 64 {
+                    message_chunk[chunk_content_length] = 0x80;
+                }
+                if chunk_content_length + 1 + 8 < 64 {
+                    let bit_length = message_length << 3;
+                    for i in 0..7 {
+                        message_chunk[56 + i] = ((bit_length >> i * 8) & 0xFF).try_into().unwrap();
+                    }
+                }
+            }
+            None => {
+                let bit_length = message_length << 3;
+                for i in 0..7 {
+                    message_chunk[56 + i] = ((bit_length >> i * 8) & 0xFF).try_into().unwrap();
+                }
             }
         }
         let mut message_chunk_u32: [u32; 16] = [0; 16];
@@ -103,4 +116,77 @@ pub fn md5(message: &[u8]) -> [u8; 16] {
         ((d >> 24) & 0xFF).try_into().unwrap(),
     ];
     ret
+}
+
+pub fn to_string(hash: &[u8; 16]) -> String {
+    let mut s = String::with_capacity(hash.len() * 2);
+    for &byte in hash {
+        write!(&mut s, "{:02x}", byte).unwrap();
+    }
+    s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_string() {
+        assert_eq!(
+            to_string(&md5(b"")),
+            String::from("d41d8cd98f00b204e9800998ecf8427e")
+        );
+    }
+
+    #[test]
+    fn string1() {
+        assert_eq!(
+            to_string(&md5(b"a")),
+            String::from("0cc175b9c0f1b6a831c399e269772661")
+        );
+    }
+
+    #[test]
+    fn string2() {
+        assert_eq!(
+            to_string(&md5(b"abc")),
+            String::from("900150983cd24fb0d6963f7d28e17f72")
+        );
+    }
+
+    #[test]
+    fn string3() {
+        assert_eq!(
+            to_string(&md5(b"message digest")),
+            String::from("f96b697d7cb7938d525a2f31aaf161d0")
+        );
+    }
+
+    #[test]
+    fn string4() {
+        assert_eq!(
+            to_string(&md5(b"abcdefghijklmnopqrstuvwxyz")),
+            String::from("c3fcd3d76192e4007dfb496cca67e13b")
+        );
+    }
+
+    #[test]
+    fn string5() {
+        assert_eq!(
+            to_string(&md5(
+                b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+            )),
+            String::from("d174ab98d277d9f5a5611c2c9f419d9f")
+        );
+    }
+
+    #[test]
+    fn string6() {
+        assert_eq!(
+            to_string(&md5(
+                b"12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+            )),
+            String::from("57edf4a22be3c955ac49da2e2107b67a")
+        );
+    }
 }
