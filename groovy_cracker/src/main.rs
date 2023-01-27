@@ -1,4 +1,4 @@
-mod md5;
+use groovy_ssl::md5;
 
 fn main() {
     println!("Hello, world!");
