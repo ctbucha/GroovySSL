@@ -3,5 +3,12 @@
 version = 3
 
 [[package]]
-name = "groovyssl"
+name = "groovy_cracker"
+version = "0.1.0"
+dependencies = [
+ "groovy_ssl",
+]
+
+[[package]]
+name = "groovy_ssl"
 version = "0.1.0"
