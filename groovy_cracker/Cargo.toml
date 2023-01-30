@@ -7,3 +7,7 @@ edition = "2021"
 
 [dependencies]
 groovy_ssl = { version = "0.1.0", path = "../groovy_ssl" }
+cust = { version = "0.3" }
+
+[build-dependencies]
+cuda_builder = { version = "0.3" }

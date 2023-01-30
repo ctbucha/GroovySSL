@@ -3,4 +3,5 @@
 members = [
   "groovy_ssl",
   "groovy_cracker",
+  "groovy_cracker_cuda",
 ]
