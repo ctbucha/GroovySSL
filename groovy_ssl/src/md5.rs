@@ -35,9 +35,9 @@ const K: [u32; 64] = [
 ];
 
 #[derive(Clone, Copy)]
-pub struct MD5Result([u8; 16]);
+pub struct MD5Hash([u8; 16]);
 
-impl IntoIterator for MD5Result {
+impl IntoIterator for MD5Hash {
     type Item = u8;
     type IntoIter = std::array::IntoIter<Self::Item, 16>;
 
@@ -46,7 +46,7 @@ impl IntoIterator for MD5Result {
     }
 }
 
-impl fmt::Display for MD5Result {
+impl fmt::Display for MD5Hash {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for byte in self.into_iter() {
             write!(f, "{:02x}", byte)?;
@@ -143,7 +143,7 @@ impl Iterator for MessagePreprocessor<'_> {
     }
 }
 
-pub fn md5(message: &[u8]) -> MD5Result {
+pub fn hash(message: &[u8]) -> MD5Hash {
     let (mut a, mut b, mut c, mut d) = (A0, B0, C0, D0);
 
     for message_chunk in MessagePreprocessor::new(message) {
@@ -156,7 +156,7 @@ pub fn md5(message: &[u8]) -> MD5Result {
         );
     }
 
-    MD5Result([
+    MD5Hash([
         (a & 0xFF).try_into().unwrap(),
         ((a >> 8) & 0xFF).try_into().unwrap(),
         ((a >> 16) & 0xFF).try_into().unwrap(),
@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn empty_string() {
         assert_eq!(
-            format!("{}", md5(b"")),
+            format!("{}", hash(b"")),
             String::from("d41d8cd98f00b204e9800998ecf8427e")
         );
     }
@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn string1() {
         assert_eq!(
-            format!("{}", md5(b"a")),
+            format!("{}", hash(b"a")),
             String::from("0cc175b9c0f1b6a831c399e269772661")
         );
     }
@@ -199,7 +199,7 @@ mod tests {
     #[test]
     fn string2() {
         assert_eq!(
-            format!("{}", md5(b"abc")),
+            format!("{}", hash(b"abc")),
             String::from("900150983cd24fb0d6963f7d28e17f72")
         );
     }
@@ -207,7 +207,7 @@ mod tests {
     #[test]
     fn string3() {
         assert_eq!(
-            format!("{}", md5(b"message digest")),
+            format!("{}", hash(b"message digest")),
             String::from("f96b697d7cb7938d525a2f31aaf161d0")
         );
     }
@@ -215,7 +215,7 @@ mod tests {
     #[test]
     fn string4() {
         assert_eq!(
-            format!("{}", md5(b"abcdefghijklmnopqrstuvwxyz")),
+            format!("{}", hash(b"abcdefghijklmnopqrstuvwxyz")),
             String::from("c3fcd3d76192e4007dfb496cca67e13b")
         );
     }
@@ -225,7 +225,7 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                md5(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+                hash(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
             ),
             String::from("d174ab98d277d9f5a5611c2c9f419d9f")
         );
@@ -234,7 +234,7 @@ mod tests {
     #[test]
     fn string6() {
         assert_eq!(
-            format!("{}", md5(b"12345678901234567890123456789012345678901234567890123456789012345678901234567890")),
+            format!("{}", hash(b"12345678901234567890123456789012345678901234567890123456789012345678901234567890")),
             String::from("57edf4a22be3c955ac49da2e2107b67a")
         );
     }
