@@ -76,15 +76,34 @@ fn md5_round(message: [u32; 16], a0: u32, b0: u32, c0: u32, d0: u32) -> (u32, u3
     (a, b, c, d)
 }
 
-pub fn md5(message: &[u8]) -> MD5Result {
-    let message_length = message.len();
-    // 1 byte end + 8 byte length
-    let chunks_count = ((message_length + 1 + 8) / 64) + 1;
-    let (mut a, mut b, mut c, mut d) = (A0, B0, C0, D0);
+struct MessagePreprocessor<'a> {
+    message: &'a [u8],
+    chunk_index: usize,
+}
 
-    for chunk_index in 0..chunks_count {
+impl MessagePreprocessor<'_> {
+    fn new(message: &[u8]) -> MessagePreprocessor {
+        MessagePreprocessor {
+            message: message,
+            chunk_index: 0,
+        }
+    }
+}
+
+impl Iterator for MessagePreprocessor<'_> {
+    type Item = [u32; 16];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let message_length = self.message.len();
+        // 1 byte end + 8 byte length
+        let chunks_count = ((message_length + 1 + 8) / 64) + 1;
+
+        if self.chunk_index >= chunks_count {
+            return None;
+        }
+
         let mut message_chunk: [u8; 64] = [0; 64];
-        let message_start_index = chunk_index * 64;
+        let message_start_index = self.chunk_index * 64;
         match if message_start_index <= message_length {
             Some(cmp::min(message_length - message_start_index, 64))
         } else {
@@ -92,7 +111,7 @@ pub fn md5(message: &[u8]) -> MD5Result {
         } {
             Some(chunk_content_length) => {
                 for i in 0..chunk_content_length {
-                    message_chunk[i] = message[message_start_index + i];
+                    message_chunk[i] = self.message[message_start_index + i];
                 }
                 if chunk_content_length < 64 {
                     message_chunk[chunk_content_length] = 0x80;
@@ -119,8 +138,16 @@ pub fn md5(message: &[u8]) -> MD5Result {
             let byte3: u32 = message_chunk[i * 4 + 3].try_into().unwrap();
             message_chunk_u32[i] = byte0 + (byte1 << 8) + (byte2 << 16) + (byte3 << 24)
         }
+        self.chunk_index += 1;
+        Some(message_chunk_u32)
+    }
+}
 
-        let (a2, b2, c2, d2) = md5_round(message_chunk_u32, a, b, c, d);
+pub fn md5(message: &[u8]) -> MD5Result {
+    let (mut a, mut b, mut c, mut d) = (A0, B0, C0, D0);
+
+    for message_chunk in MessagePreprocessor::new(message) {
+        let (a2, b2, c2, d2) = md5_round(message_chunk, a, b, c, d);
         (a, b, c, d) = (
             a.wrapping_add(a2),
             b.wrapping_add(b2),
